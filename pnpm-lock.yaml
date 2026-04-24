@@ -11,6 +11,9 @@ importers:
       fflate:
         specifier: ^0.8.2
         version: 0.8.2
+      figma-var-export:
+        specifier: ^0.0.6
+        version: 0.0.6
     devDependencies:
       '@types/node':
         specifier: ^25.6.0
@@ -1076,6 +1079,11 @@ packages:
 
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
+
+  figma-var-export@0.0.6:
+    resolution: {integrity: sha512-eLWK7g6kpB44XkV2499gAtp7J3RPriql9zd44gq9vJhvuRH5Gg/2qxm05KRzqQmJNlaP8U9HyGKrE/7TotYiOw==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   filesize@11.0.16:
     resolution: {integrity: sha512-XMcUu0Zxnh0L8rY5b5vrdKKs0H3l3osTp9vNEBulRmwLqYfuQe5SJCagpA0/sGMJx2KHbD+IWOyd6QsJQuYEkQ==}
@@ -2867,6 +2875,10 @@ snapshots:
       picomatch: 4.0.4
 
   fflate@0.8.2: {}
+
+  figma-var-export@0.0.6:
+    dependencies:
+      cac: 7.0.0
 
   filesize@11.0.16: {}
 

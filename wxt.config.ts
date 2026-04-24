@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url'
-
 import { defineConfig } from 'wxt'
 
 const figmaMatches = ['https://www.figma.com/*', 'https://figma.com/*']
@@ -25,18 +23,4 @@ export default defineConfig({
       },
     },
   },
-  vite: () => ({
-    resolve: {
-      alias: {
-        '@figma-var-export/core': fileURLToPath(
-          new URL('../figma-var-export/src/generate.ts', import.meta.url),
-        ),
-      },
-    },
-    server: {
-      fs: {
-        allow: [fileURLToPath(new URL('..', import.meta.url))],
-      },
-    },
-  }),
 })

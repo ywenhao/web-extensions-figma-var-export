@@ -1,55 +1,64 @@
-import { generateThemeCss } from '@figma-var-export/core'
 import { strFromU8, unzipSync } from 'fflate'
+import { generateThemeModesCss, resolvePrimaryThemeModeName } from 'figma-var-export/browser'
+
+interface ThemeModeArchiveEntry {
+  fileName: string
+  modeName: string
+  tokens: Record<string, unknown>
+}
 
 export interface TokensZipToCssResult {
   css: string
-  files: {
-    dark: string
-    light: string
-  }
+  files: Array<{
+    fileName: string
+    modeName: string
+  }>
+  modeNames: string[]
+  primaryModeName: string
 }
 
 export function tokensZipToCss(input: ArrayBuffer | Uint8Array): TokensZipToCssResult {
   const archive = unzipSync(input instanceof Uint8Array ? input : new Uint8Array(input))
-  const lightFileName = findTokenFile(archive, 'Light')
-  const darkFileName = findTokenFile(archive, 'Dark')
-
-  const lightTokens = parseTokenJson(archive[lightFileName], lightFileName)
-  const darkTokens = parseTokenJson(archive[darkFileName], darkFileName)
-  const css = `${generateThemeCss(lightTokens, darkTokens)}\n`
+  const modes = findThemeModeEntries(archive)
+  const modeNames = modes.map((mode) => mode.modeName)
+  const primaryModeName = resolvePrimaryThemeModeName(modeNames)
+  const css = `${generateThemeModesCss(
+    modes.map((mode) => ({
+      name: mode.modeName,
+      tokens: mode.tokens,
+    })),
+    { primaryModeName },
+  )}\n`
 
   return {
     css,
-    files: {
-      dark: darkFileName,
-      light: lightFileName,
-    },
+    files: modes.map((mode) => ({
+      fileName: mode.fileName,
+      modeName: mode.modeName,
+    })),
+    modeNames,
+    primaryModeName,
   }
 }
 
-function findTokenFile(files: Record<string, Uint8Array>, modeName: 'Dark' | 'Light'): string {
-  const mode = modeName.toLowerCase()
-  const names = Object.keys(files).filter((name) => !name.endsWith('/'))
+function findThemeModeEntries(files: Record<string, Uint8Array>): ThemeModeArchiveEntry[] {
+  const tokenFileNames = Object.keys(files)
+    .filter((name) => !name.endsWith('/'))
+    .filter((name) => {
+      const basename = getBasename(name).toLowerCase()
+      return basename.endsWith('.tokens.json')
+    })
+    .toSorted((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }))
 
-  const exact = names.find((name) => {
-    const basename = getBasename(name).toLowerCase()
-    return basename === `${mode}.tokens.json`
-  })
-
-  if (exact) {
-    return exact
+  if (tokenFileNames.length === 0) {
+    throw new Error('Cannot find any *.tokens.json file in theme.zip.')
   }
 
-  const fallback = names.find((name) => {
-    const basename = getBasename(name).toLowerCase()
-    return basename.endsWith('.json') && basename.includes(mode)
-  })
-
-  if (fallback) {
-    return fallback
-  }
-
-  throw new Error(`Cannot find ${modeName}.tokens.json in theme.zip.`)
+  return tokenFileNames.map((fileName) => ({
+    fileName,
+    modeName: getModeName(fileName),
+    tokens: parseTokenJson(files[fileName], fileName),
+  }))
 }
 
 function parseTokenJson(
@@ -70,4 +79,15 @@ function parseTokenJson(
 
 function getBasename(path: string): string {
   return path.split(/[\\/]/).pop() ?? path
+}
+
+function getModeName(fileName: string): string {
+  const basename = getBasename(fileName)
+  const modeName = basename.replace(/\.tokens\.json$/i, '').trim()
+
+  if (!modeName) {
+    throw new Error(`Cannot derive a mode name from ${fileName}.`)
+  }
+
+  return modeName
 }

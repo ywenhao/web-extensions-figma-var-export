@@ -1,5 +1,5 @@
 {
-  "name": "figma-var-export",
+  "name": "figma-var-export-extension",
   "version": "0.0.0",
   "private": true,
   "description": "Chrome and Firefox extension for exporting Figma variables as vars.css.",
@@ -24,7 +24,8 @@
     "check": "pnpm run format:check && pnpm run lint && pnpm run compile && pnpm run test && pnpm run build"
   },
   "dependencies": {
-    "fflate": "^0.8.2"
+    "fflate": "^0.8.2",
+    "figma-var-export": "^0.0.6"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
