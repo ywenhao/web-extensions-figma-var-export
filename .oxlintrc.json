@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "browser": true,
+    "es2026": true,
+    "node": true,
+    "webextensions": true
+  },
+  "globals": {
+    "defineContentScript": "readonly"
+  },
+  "ignorePatterns": [".output/**", ".wxt/**", "dist/**", "node_modules/**"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "style": "off",
+    "pedantic": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "env": {
+        "vitest": true
+      }
+    },
+    {
+      "files": ["public/**/*.js"],
+      "rules": {
+        "typescript/no-var-requires": "off"
+      }
+    }
+  ],
+  "rules": {
+    "no-debugger": "error",
+    "no-console": "warn"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "figma-var-export",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Chrome and Firefox extension for exporting Figma variables as vars.css.",
+  "type": "module",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "prepare": "simple-git-hooks",
+    "dev": "wxt",
+    "dev:chrome": "wxt -b chrome",
+    "dev:firefox": "wxt -b firefox",
+    "build": "pnpm run build:chrome && pnpm run build:firefox",
+    "build:chrome": "wxt build -b chrome",
+    "build:firefox": "wxt build -b firefox",
+    "zip:chrome": "wxt zip -b chrome",
+    "zip:firefox": "wxt zip -b firefox",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "format": "oxfmt .",
+    "format:check": "oxfmt . --check",
+    "compile": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run compile && pnpm run test && pnpm run build"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "lint-staged": "^16.4.0",
+    "oxfmt": "^0.46.0",
+    "oxlint": "^1.61.0",
+    "simple-git-hooks": "^2.13.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5",
+    "wxt": "^0.20.25"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "oxlint --fix",
+      "oxfmt"
+    ],
+    "*.{json,jsonc,md,yml,yaml}": [
+      "oxfmt"
+    ]
+  },
+  "packageManager": "pnpm@10.33.2"
+}

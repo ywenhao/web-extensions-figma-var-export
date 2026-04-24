@@ -1,0 +1,10 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@figma-var-export/core": ["../figma-var-export/src/generate.ts"],
+      "~/*": ["./src/*"]
+    }
+  }
+}
