@@ -6,6 +6,7 @@
 // @match        https://www.figma.com/*
 // @match        https://figma.com/*
 // @run-at       document-idle
+// @icon         https://productsummaryprod.blob.core.windows.net/logos/cbb55ab6-46b3-401c-85dd-ba851824ff7c?skoid=e496550c-7111-42d0-887e-0a7eaa90711d&sktid=975f013f-7f24-47e8-a7d3-abc4752bf346&skt=2026-05-11T16%3A04%3A37Z&ske=2026-05-18T15%3A49%3A37Z&sks=b&skv=2021-10-04&sv=2021-10-04&st=2026-05-18T01%3A25%3A56Z&se=2026-05-18T09%3A25%3A56Z&sr=b&sp=r&sig=yt6pWnHvCjiYBSax4UX59WTNhpg4bmncmbJ2H3036wc%3D
 // @grant        none
 // @require      https://cdn.jsdelivr.net/npm/fflate@0.8.3/umd/index.js
 // ==/UserScript==
