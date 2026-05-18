@@ -24,7 +24,7 @@
     "check": "pnpm run format:check && pnpm run lint && pnpm run compile && pnpm run test && pnpm run build"
   },
   "dependencies": {
-    "fflate": "^0.8.2",
+    "fflate": "^0.8.3",
     "figma-var-export": "^0.0.6"
   },
   "devDependencies": {

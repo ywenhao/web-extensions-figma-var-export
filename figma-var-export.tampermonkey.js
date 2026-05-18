@@ -7,7 +7,7 @@
 // @match        https://figma.com/*
 // @run-at       document-idle
 // @grant        none
-// @require      https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js
+// @require      https://cdn.jsdelivr.net/npm/fflate@0.8.3/umd/index.js
 // ==/UserScript==
 
 ;(() => {
