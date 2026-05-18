@@ -10,6 +10,12 @@ pnpm dev:chrome
 pnpm dev:firefox
 ```
 
+## Tampermonkey
+
+Install `figma-var-export.tampermonkey.js` in Tampermonkey. The userscript adds the same
+`Export vars.css` action on Figma pages and uses a pinned `fflate` dependency via
+`@require`.
+
 ## Build
 
 ```bash
