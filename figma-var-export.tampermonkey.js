@@ -2,7 +2,7 @@
 // @name         figma-var-export
 // @namespace    https://github.com/ywenhao/figma-var-export
 // @version      0.1.0
-// @description  Add an Export vars.css action to Figma's variables panel.
+// @description  Add Export vars.css and Copy vars.css actions to Figma's variables panel.
 // @match        https://www.figma.com/*
 // @match        https://figma.com/*
 // @run-at       document-idle
@@ -16,9 +16,14 @@
 
   const EXPORT_MODES_LABEL = 'Export modes'
   const EXPORT_VARS_LABEL = 'Export vars.css'
+  const COPY_VARS_LABEL = 'Copy vars.css'
   const OUTPUT_FILE_NAME = 'vars.css'
   const INSTALL_KEY = '__figmaVarExportUserscriptInstalled'
   const DEFAULT_PRIMARY_MODE_NAMES = ['Light', 'Main']
+  const VARS_ACTION_LABELS = {
+    copy: COPY_VARS_LABEL,
+    download: EXPORT_VARS_LABEL,
+  }
 
   if (window[INSTALL_KEY]) {
     return
@@ -40,7 +45,7 @@
 
   // Workflow:
   // 1. Hook browser download primitives before Figma starts exporting.
-  // 2. Watch Figma's menu DOM and clone "Export modes" as "Export vars.css".
+  // 2. Watch Figma's menu DOM and clone "Export modes" as custom vars.css actions.
   // 3. On click, arm a short-lived zip capture and trigger Figma's native export.
   // 4. Convert captured *.tokens.json files from theme.zip into vars.css.
   installCaptureHooks()
@@ -132,12 +137,17 @@
     const exportModeItems = findExportModeMenuItems()
 
     for (const originalItem of exportModeItems) {
-      if (hasInjectedSibling(originalItem)) {
-        continue
-      }
+      let insertAfter = originalItem
 
-      const exportVarsItem = createExportVarsMenuItem(originalItem)
-      originalItem.insertAdjacentElement('afterend', exportVarsItem)
+      for (const action of ['download', 'copy']) {
+        if (hasInjectedSibling(originalItem, action)) {
+          continue
+        }
+
+        const exportVarsItem = createVarsMenuItem(originalItem, action)
+        insertAfter.insertAdjacentElement('afterend', exportVarsItem)
+        insertAfter = exportVarsItem
+      }
     }
   }
 
@@ -173,14 +183,15 @@
 
   // The cloned row must stop Figma's native handlers, then run this script's
   // export flow against the original row.
-  function createExportVarsMenuItem(originalItem) {
+  function createVarsMenuItem(originalItem, action) {
     const item = originalItem.cloneNode(true)
+    const label = VARS_ACTION_LABELS[action]
 
     removeIds(item)
-    replaceText(item, EXPORT_MODES_LABEL, EXPORT_VARS_LABEL)
-    item.dataset.figmaVarExportMenuItem = 'true'
-    item.setAttribute('aria-label', EXPORT_VARS_LABEL)
-    item.setAttribute('title', EXPORT_VARS_LABEL)
+    replaceText(item, EXPORT_MODES_LABEL, label)
+    item.dataset.figmaVarExportMenuItem = action
+    item.setAttribute('aria-label', label)
+    item.setAttribute('title', label)
 
     item.addEventListener('pointerdown', stopNativeMenuPropagation, true)
     item.addEventListener('pointerup', stopNativeMenuPropagation, true)
@@ -190,7 +201,7 @@
       'click',
       (event) => {
         stopNativeMenuClick(event)
-        beginExport(originalItem)
+        beginExport(originalItem, action)
       },
       true,
     )
@@ -209,7 +220,7 @@
 
   // Arm capture first, then click Figma's original export action. The next zip
   // download produced by Figma is intercepted and converted instead of saved.
-  function beginExport(originalMenuItem) {
+  function beginExport(originalMenuItem, action) {
     if (!getFflate()) {
       showToast('Cannot load fflate. Check Tampermonkey @require access and try again.', 'error')
       return
@@ -230,6 +241,7 @@
     }, 20000)
 
     pendingExport = {
+      action,
       originalMenuItem,
       requestId,
       timeoutTimer,
@@ -239,7 +251,9 @@
       requestId,
     }
 
-    showToast('Reading Figma theme.zip...')
+    showToast(
+      action === 'copy' ? 'Reading Figma theme.zip for copy...' : 'Reading Figma theme.zip...',
+    )
     window.setTimeout(() => activateMenuItem(originalMenuItem), 0)
   }
 
@@ -371,15 +385,24 @@
 
   // Keep the final download separate from the capture hooks; by this point
   // activeCapture has already been cleared so vars.css is not intercepted.
-  function handleCapturedZip(zip, download, requestId) {
+  async function handleCapturedZip(zip, download, requestId) {
     if (!pendingExport || pendingExport.requestId !== requestId) {
       return
     }
 
+    const { action } = pendingExport
+
     try {
       const result = tokensZipToCss(zip)
-      downloadTextFile(OUTPUT_FILE_NAME, result.css, 'text/css')
-      showToast(`Downloaded ${OUTPUT_FILE_NAME}`, 'success')
+      const css = result.css.trim()
+
+      if (action === 'copy') {
+        await copyTextToClipboard(css)
+        showToast(`Copied ${OUTPUT_FILE_NAME}`, 'success')
+      } else {
+        downloadTextFile(OUTPUT_FILE_NAME, css, 'text/css')
+        showToast(`Downloaded ${OUTPUT_FILE_NAME}`, 'success')
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       showToast(message, 'error')
@@ -449,14 +472,22 @@
     pendingExport = undefined
   }
 
-  function hasInjectedSibling(originalItem) {
+  function hasInjectedSibling(originalItem, action) {
     const parent = originalItem.parentElement
 
     if (!parent) {
       return false
     }
 
-    return Boolean(parent.querySelector(':scope > [data-figma-var-export-menu-item="true"]'))
+    if (action === 'download') {
+      return Boolean(
+        parent.querySelector(
+          ':scope > [data-figma-var-export-menu-item="download"], :scope > [data-figma-var-export-menu-item="true"]',
+        ),
+      )
+    }
+
+    return Boolean(parent.querySelector(':scope > [data-figma-var-export-menu-item="copy"]'))
   }
 
   function findMenuItemElement(element) {
@@ -546,6 +577,41 @@
     anchor.remove()
 
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  async function copyTextToClipboard(content) {
+    let clipboardError
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(content)
+        return
+      } catch (error) {
+        clipboardError = error
+      }
+    }
+
+    const textArea = document.createElement('textarea')
+    textArea.value = content
+    textArea.readOnly = true
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    textArea.style.top = '0'
+
+    const parent = document.body || document.documentElement
+    parent.append(textArea)
+    textArea.focus()
+    textArea.select()
+
+    try {
+      if (!document.execCommand('copy')) {
+        throw new Error('Copy command was rejected.')
+      }
+    } catch (error) {
+      throw clipboardError instanceof Error ? clipboardError : error
+    } finally {
+      textArea.remove()
+    }
   }
 
   function showToast(message, variant = 'info') {

@@ -5,4 +5,5 @@ export const PAGE_SOURCE = 'figma-var-export-page'
 
 export const EXPORT_MODES_LABEL = 'Export modes'
 export const EXPORT_VARS_LABEL = 'Export vars.css'
+export const COPY_VARS_LABEL = 'Copy vars.css'
 export const OUTPUT_FILE_NAME = 'vars.css'

@@ -1,6 +1,8 @@
 import { browser } from 'wxt/browser'
 
+import { copyTextToClipboard } from '../clipboard'
 import {
+  COPY_VARS_LABEL,
   EXPORT_MODES_LABEL,
   EXPORT_VARS_LABEL,
   EXTENSION_SOURCE,
@@ -12,11 +14,19 @@ import { downloadTextFile } from '../download'
 import { showToast } from '../toast'
 import { tokensZipToCss } from '../tokens'
 
+type VarsAction = 'copy' | 'download'
+
 interface PendingExport {
+  action: VarsAction
   originalMenuItem: HTMLElement
   readyTimer: number
   requestId: string
   timeoutTimer: number
+}
+
+const VARS_ACTION_LABELS: Record<VarsAction, string> = {
+  copy: COPY_VARS_LABEL,
+  download: EXPORT_VARS_LABEL,
 }
 
 type PageMessage =
@@ -90,12 +100,17 @@ function installExportVarsItems(): void {
   const exportModeItems = findExportModeMenuItems()
 
   for (const originalItem of exportModeItems) {
-    if (hasInjectedSibling(originalItem)) {
-      continue
-    }
+    let insertAfter = originalItem
 
-    const exportVarsItem = createExportVarsMenuItem(originalItem)
-    originalItem.insertAdjacentElement('afterend', exportVarsItem)
+    for (const action of ['download', 'copy'] as const) {
+      if (hasInjectedSibling(originalItem, action)) {
+        continue
+      }
+
+      const exportVarsItem = createVarsMenuItem(originalItem, action)
+      insertAfter.insertAdjacentElement('afterend', exportVarsItem)
+      insertAfter = exportVarsItem
+    }
   }
 }
 
@@ -126,14 +141,15 @@ function findExportModeMenuItems(): HTMLElement[] {
   return [...items]
 }
 
-function createExportVarsMenuItem(originalItem: HTMLElement): HTMLElement {
+function createVarsMenuItem(originalItem: HTMLElement, action: VarsAction): HTMLElement {
   const item = originalItem.cloneNode(true) as HTMLElement
+  const label = VARS_ACTION_LABELS[action]
 
   removeIds(item)
-  replaceText(item, EXPORT_MODES_LABEL, EXPORT_VARS_LABEL)
-  item.dataset.figmaVarExportMenuItem = 'true'
-  item.setAttribute('aria-label', EXPORT_VARS_LABEL)
-  item.setAttribute('title', EXPORT_VARS_LABEL)
+  replaceText(item, EXPORT_MODES_LABEL, label)
+  item.dataset.figmaVarExportMenuItem = action
+  item.setAttribute('aria-label', label)
+  item.setAttribute('title', label)
 
   item.addEventListener('pointerdown', stopNativeMenuPropagation, true)
   item.addEventListener('pointerup', stopNativeMenuPropagation, true)
@@ -143,7 +159,7 @@ function createExportVarsMenuItem(originalItem: HTMLElement): HTMLElement {
     'click',
     (event) => {
       stopNativeMenuClick(event)
-      beginExport(originalItem)
+      beginExport(originalItem, action)
     },
     true,
   )
@@ -160,7 +176,7 @@ function stopNativeMenuClick(event: Event): void {
   event.stopImmediatePropagation()
 }
 
-function beginExport(originalMenuItem: HTMLElement): void {
+function beginExport(originalMenuItem: HTMLElement, action: VarsAction): void {
   if (pendingExport) {
     finishPendingExport()
   }
@@ -187,13 +203,14 @@ function beginExport(originalMenuItem: HTMLElement): void {
   }, 20000)
 
   pendingExport = {
+    action,
     originalMenuItem,
     readyTimer,
     requestId,
     timeoutTimer,
   }
 
-  showToast('Preparing vars.css export...')
+  showToast(action === 'copy' ? 'Preparing vars.css copy...' : 'Preparing vars.css export...')
   window.postMessage(
     {
       requestId,
@@ -234,15 +251,28 @@ function handlePageMessage(event: MessageEvent): void {
   }
 
   if (data.type === 'zip-captured' && data.zip) {
-    handleCapturedZip(data.zip)
+    void handleCapturedZip(data.zip)
   }
 }
 
-function handleCapturedZip(zip: ArrayBuffer): void {
+async function handleCapturedZip(zip: ArrayBuffer): Promise<void> {
+  const action = pendingExport?.action
+
+  if (!action) {
+    return
+  }
+
   try {
     const result = tokensZipToCss(zip)
-    downloadTextFile(OUTPUT_FILE_NAME, result.css, 'text/css')
-    showToast(`Downloaded ${OUTPUT_FILE_NAME}`, 'success')
+    const css = result.css.trim()
+
+    if (action === 'copy') {
+      await copyTextToClipboard(css)
+      showToast(`Copied ${OUTPUT_FILE_NAME}`, 'success')
+    } else {
+      downloadTextFile(OUTPUT_FILE_NAME, css, 'text/css')
+      showToast(`Downloaded ${OUTPUT_FILE_NAME}`, 'success')
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     showToast(message, 'error')
@@ -291,14 +321,22 @@ function finishPendingExport(): void {
   pendingExport = undefined
 }
 
-function hasInjectedSibling(originalItem: HTMLElement): boolean {
+function hasInjectedSibling(originalItem: HTMLElement, action: VarsAction): boolean {
   const parent = originalItem.parentElement
 
   if (!parent) {
     return false
   }
 
-  return Boolean(parent.querySelector(':scope > [data-figma-var-export-menu-item="true"]'))
+  if (action === 'download') {
+    return Boolean(
+      parent.querySelector(
+        ':scope > [data-figma-var-export-menu-item="download"], :scope > [data-figma-var-export-menu-item="true"]',
+      ),
+    )
+  }
+
+  return Boolean(parent.querySelector(':scope > [data-figma-var-export-menu-item="copy"]'))
 }
 
 function findMenuItemElement(element: HTMLElement): HTMLElement | undefined {

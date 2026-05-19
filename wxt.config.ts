@@ -7,6 +7,7 @@ export default defineConfig({
   manifest: {
     name: 'figma-var-export',
     description: 'Export Figma variables as vars.css from the variables panel.',
+    permissions: ['clipboardWrite'],
     host_permissions: figmaMatches,
     web_accessible_resources: [
       {
